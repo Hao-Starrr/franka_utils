@@ -49,14 +49,14 @@ class FK():
         # the DH convention is Craig’s convention, which is the same with official documents 
         self.a = np.array([0.0, 0.0, 0.0, 0.0825, -0.0825, 0.0, 0.088, 0.0])
         self.d = np.array([0.333, 0.0, 0.316, 0.0, 0.384, 0.0, 0.0, 0.21])
-        self.alpha = np.array([0.0, -np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, -np.pi / 2.0, np.pi / 2.0, np.pi / 2.0, 0.0])
+        self.alpha = np.array([0.0, -pi/2, pi/2, pi/2, -pi/2, pi/2, pi/2, 0.0])
 
         self.compensate = np.array([[0, 0, -0.192], # the joint 1 center is at this coordinate in frame 1 
                                    [0, 0, 0],
                                    [0, 0, -0.121],
                                    [0, 0, 0],
                                    [0, 0, -0.259],
-                                   [0, 0, 0],
+                                   [0, 0, -0.015],
                                    [0, 0, 0.051],
                                    [0, 0, 0]])
 
@@ -96,11 +96,11 @@ class FK():
         jointPositions = np.zeros((8,3))
         Ai = [] # a list, every element is 4x4 numpy array
         T = np.identity(4)
-        theta = np.append(q, 0.0)
+        theta = np.append(q, -pi/4)
 
-        for i in range(0,8):
+        for i in range(0,8): 
             # calculate A and append A at list
-            A = self.modified_dh_transform_matrix(self.a[i],self.d[i],self.alpha[i],theta[i])
+            A = self.modified_dh_transform_matrix(self.a[i], self.d[i], self.alpha[i], theta[i])
             Ai.append(A)
             # multiply A to T
             T = T @ A
@@ -167,3 +167,4 @@ if __name__ == "__main__":
     print("Joint Positions:\n",joint_positions[7])
     # print("End Effector Pose:\n",T0e)
     print("end eff position: ", T0e[:3, 3])
+
