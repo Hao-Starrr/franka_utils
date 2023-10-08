@@ -47,17 +47,17 @@ class FK():
         # is provided in the lab handout
 
         # the DH convention is Craig’s convention, which is the same with official documents 
-        self.a = np.array([0.0, 0.0, 0.0, 0.0825, -0.0825, 0.0, 0.088, 0.0])
-        self.d = np.array([0.333, 0.0, 0.316, 0.0, 0.384, 0.0, 0.0, 0.21])
-        self.alpha = np.array([0.0, -pi/2, pi/2, pi/2, -pi/2, pi/2, pi/2, 0.0])
+        self.a = np.array([0.0, 0.0, 0.0825, -0.0825, 0.0, 0.088, 0.0])
+        self.d = np.array([0.333, 0.0, 0.316, 0.0, 0.384, 0.0, 0.210])
+        self.alpha = np.array([-pi/2, pi/2, pi/2, -pi/2, pi/2, pi/2, 0.0])
 
-        self.compensate = np.array([[0, 0, -0.192], # the joint 1 center is at this coordinate in frame 1 
+        self.compensate = np.array([[0, 0, 0.141], # the joint 1 center is at this coordinate in frame 0
                                    [0, 0, 0],
-                                   [0, 0, -0.121],
+                                   [0, 0, 0.195], # the joint 3 center is at this coordinate in frame 2
                                    [0, 0, 0],
-                                   [0, 0, -0.259],
-                                   [0, 0, -0.015],
-                                   [0, 0, 0.051],
+                                   [0, 0, 0.125], # the joint 5 center is at this coordinate in frame 4
+                                   [0, 0, -0.015], # the joint 6 center is at this coordinate in frame 5
+                                   [0, 0, 0.051], # the joint 7 center is at this coordinate in frame 6
                                    [0, 0, 0]])
 
 
@@ -68,6 +68,15 @@ class FK():
         [np.sin(theta) * np.cos(alpha), np.cos(theta) * np.cos(alpha), -np.sin(alpha), -np.sin(alpha) * d],
         [np.sin(theta) * np.sin(alpha), np.cos(theta) * np.sin(alpha), np.cos(alpha), np.cos(alpha) * d],
         [0, 0, 0, 1]
+        ])
+        return matrix
+
+    def classical_dh_transform_matrix(self, a, d, alpha, theta):
+        matrix = np.array([
+            [np.cos(theta), -np.sin(theta)*np.cos(alpha), np.sin(theta)*np.sin(alpha), a*np.cos(theta)],
+            [np.sin(theta), np.cos(theta)*np.cos(alpha), -np.cos(theta)*np.sin(alpha), a*np.sin(theta)],
+            [0, np.sin(alpha), np.cos(alpha), d],
+            [0, 0, 0, 1]
         ])
         return matrix
     
@@ -85,39 +94,25 @@ class FK():
                   world frame
         """
 
-        # Your Lab 1 code starts here
-
-        # The frame build as official documents, in Craig’s convention
-        # So the frame origins are not at joints centers
-        # We need calculate the position for every joints
-        # So we need to compensate the distant for every frame
-
-        # initialize
         jointPositions = np.zeros((8,3))
-        Ai = [] # a list, every element is 4x4 numpy array
-        T = np.identity(4)
-        theta = np.append(q, -pi/4)
+        theta = q
+        theta[6] -= pi/4
 
-        for i in range(0,8): 
-            # calculate A and append A at list
-            A = self.modified_dh_transform_matrix(self.a[i], self.d[i], self.alpha[i], theta[i])
-            Ai.append(A)
-            # multiply A to T
-            T = T @ A
-            # compensate for joint centers
-            x, y, z = self.compensate[i] # the joint center frames in DH frames, T1center1
-            jointPositions[i] = (T @  self.translate(x, y, z))[:3,3] # T0center1 position
+        T = np.identity(4)
+        x,y,z = self.compensate[0]
+        jointPositions[0] = (T @  self.translate(x,y,z))[:3,3] # T0center1 position
+
+        for i in range(0,7): 
+            Ai = self.classical_dh_transform_matrix(self.a[i], self.d[i], self.alpha[i], theta[i])
+            T = T @ Ai
+            # print(T)
+            x, y, z = self.compensate[i+1] # the joint center frames in DH frames, T1center1
+            jointPositions[i+1] = (T @  self.translate(x, y, z))[:3,3] # T0center2 position
             
         T0e = T
 
-        # Your code ends here
-
         return jointPositions, T0e
 
-    # feel free to define additional helper methods to modularize your solution for lab 1
-
-    
-    # This code is for Lab 2, you can ignore it ofr Lab 1
     def get_axis_of_rotation(self, q):
         """
         INPUT:
@@ -143,28 +138,34 @@ class FK():
         """
         # STUDENT CODE HERE: This is a function needed by lab 2
         Ai = [] # a list, every element is 4x4 numpy array
-        theta = np.append(q, 0.0)
+        theta = q
+        theta[6] -= pi/4
 
-        for i in range(0,8):
-            # calculate A and append A at list
-            A = self.modified_dh_transform_matrix(self.a[i],self.d[i],self.alpha[i],theta[i])
-            Ai.append(A)
-
-
-        return()
+        T = np.identity(4)
+        Ai.append(T) # Ai[0] = T00
+        for i in range(0,7): 
+            A = self.classical_dh_transform_matrix(self.a[i], self.d[i], self.alpha[i], theta[i])
+            T = T @ A
+            Ai.append(T) # Ai[1] = T01, Ai[2] = T02, ...,Ai[7] = T07
+        
+        return Ai
     
 if __name__ == "__main__":
 
     fk = FK()
 
     # matches figure in the handout
-    q = np.array([0,0,0,-pi/2,0,pi/2,pi/4])
-    q = np.array([0,0,0,0,0,0,0])
-
-
-    joint_positions, T0e = fk.forward(q)
+    q = np.zeros((5,7))
+    q[0] = np.array([0, 0, 0, -0.1, 0, 0, 0])
+    q[1] = np.array([0, 0, 0, -np.pi/2, 0, np.pi/2, np.pi/4])
+    q[2] = np.array([np.pi/2, np.pi/4, -np.pi/4, -np.pi/2, 0, np.pi/2, np.pi/4])
+    q[3] = np.array([0, 0, 0, -np.pi/4, np.pi/2, np.pi/2, np.pi/4])
+    q[4] = np.array([0, 0, 0, -np.pi/4, np.pi/2, np.pi, 2.8])
+    for i in range(5):
+        joint_positions, T0e = fk.forward(q[i])
+        print(np.round(T0e[:3,3],3))
     
-    print("Joint Positions:\n",joint_positions[7])
+    # print("Joint Positions:\n",joint_positions)
     # print("End Effector Pose:\n",T0e)
-    print("end eff position: ", T0e[:3, 3])
+
 
