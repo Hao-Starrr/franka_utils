@@ -12,10 +12,27 @@ def calcJacobian(q_in):
 
     J = np.zeros((6, 7))
 
-    ## STUDENT CODE GOES HERE
+    fk = FK()
+    # the transformation matrix for each joint
+    # it is a list, every element in the list is T0n, n from 0 to effector
+    Ai = fk.compute_Ai(q_in)
+
+    # the position of the end effector in world coordinates
+    o7 = Ai[-1][:3, 3]
+
+    for i in range(7): # from frame 0 to frame 7
+        zi = Ai[i][:3, 2]
+        oi = Ai[i][:3, 3]
+
+        # linear velocity Jacobian
+        J[0:3, i] = np.cross(zi, o7 - oi)
+
+        # angular velocity Jacobian 
+        J[3:6, i] = zi 
 
     return J
 
 if __name__ == '__main__':
-    q= np.array([0, 0, 0, -np.pi/2, 0, np.pi/2, np.pi/4])
+    q = np.array([0, 0, 0, -np.pi/2, 0, np.pi/2, np.pi/4])
+    # q = np.array([0,0,0,0,0,0,0])
     print(np.round(calcJacobian(q),3))
