@@ -139,6 +139,7 @@ class JacobianDemo():
 
                 # Velocity Inverse Kinematics
                 dq = IK_velocity(q,v,np.array([np.nan,np.nan,np.nan]))
+                dq = dq.flatten ()
 
                 # Get the correct timing to update with the robot
                 if self.last_iteration_time == None:
